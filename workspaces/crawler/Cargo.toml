@@ -1,0 +1,23 @@
+[package]
+name = "crawler"
+version = "1.0.0"
+description = "The crawler"
+authors = ["sodiumlabs"]
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+database = { path = "../database" }
+utils = { path = "../utils" }
+dashmap = "6.1.0"
+diesel = { version = "2.2.8", features = ["postgres"] }
+regex = "1.11.1"
+reqwest = { version = "0.12.14", default-features = false, features = ["rustls-tls"] }
+robotstxt = "0.3.0"
+scraper = "0.23.1"
+tokio = { version = "1.44.1", features = ["full"] }
+url = "2.5.4"
+
+[lib]
+name = "crawler"
+path = "src/lib.rs"

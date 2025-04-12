@@ -1,0 +1,18 @@
+[package]
+name = "cli"
+version = "1.0.0"
+description = "The Epsilon CLI"
+authors = ["sodiumlabs"]
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+api = { path = "../api" }
+crawler = { path = "../crawler" }
+database = { path = "../database" }
+favicons = { path = "../favicons" }
+indexer = { path = "../indexer" }
+monitor = { path = "../monitor" }
+tokio = { version = "1.44.1", features = ["full"] }
+dotenvy = "0.15.7"
+reqwest = { version = "0.12.14", default-features = false, features = ["rustls-tls"] }

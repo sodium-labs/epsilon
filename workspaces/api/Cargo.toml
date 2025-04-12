@@ -1,0 +1,24 @@
+[package]
+name = "api"
+version = "1.0.0"
+description = "The Epsilon API"
+authors = ["sodiumlabs"]
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+database = { path = "../database" }
+utils = { path = "../utils" }
+diesel = { version = "2.2.8", features = ["postgres"] }
+axum = { version = "0.8.1", features = ["macros"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+tokio = { version = "1.44.1", features = ["full"] }
+utoipa = "5.3.1"
+utoipa-axum = "0.2.0"
+utoipa-swagger-ui = { version = "9.0.0", features = ["axum"] }
+base64 = "0.22.1"
+
+[lib]
+name = "api"
+path = "src/lib.rs"
