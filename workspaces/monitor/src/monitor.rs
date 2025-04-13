@@ -28,7 +28,7 @@ impl Monitor {
 
         Self {
             db_pool,
-            system: System::new(),
+            system: System::new_all(),
             current_pid: pid,
         }
     }
@@ -86,6 +86,8 @@ impl Monitor {
     }
 
     fn save_sys_analytics(&mut self) -> QueryResult<()> {
+        self.system.refresh_all();
+
         if let Some(process) = self.system.process(self.current_pid) {
             let now = get_sql_timestamp();
 
