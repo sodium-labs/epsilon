@@ -1,6 +1,6 @@
 [package]
 name = "monitor"
-version = "1.0.0"
+version = "1.0.1"
 description = "The analytics and statistics monitor"
 authors = ["sodiumlabs"]
 edition = "2021"
