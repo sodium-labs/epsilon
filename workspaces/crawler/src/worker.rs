@@ -6,7 +6,6 @@ use dashmap::mapref::one::RefMut;
 use database::models::{NewFavicon, NewPage, NewQueuedPage};
 use database::schema::{favicons, pages, queue};
 use diesel::prelude::*;
-use std::error::Error;
 use std::{
     collections::HashSet,
     sync::Arc,
@@ -143,8 +142,13 @@ impl Worker {
                     } else if e.is_redirect() {
                         continue;
                     }
+                    if e.is_connect() {
+                        continue;
+                    }
                     if e.is_request() {
-                        if let Some(std_error) = e.source() {
+                        continue;
+                        // TODO: errors should be logged in a file, not in the console.
+                        /*if let Some(std_error) = e.source() {
                             let error_string = format!("{std_error}");
                             // unknown host
                             if error_string.contains("Os { code: 11001, ") {
@@ -162,7 +166,7 @@ impl Worker {
                             if error_string.contains("Os { code: -2146762495, ") {
                                 continue;
                             }
-                        }
+                        }*/
                     }
                     eprintln!("reqwest error when crawling {}: {:?}", task.url, e);
                 }
