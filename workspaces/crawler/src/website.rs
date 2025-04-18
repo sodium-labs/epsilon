@@ -33,7 +33,10 @@ impl Website {
         false
     }
 
-    pub async fn fetch_robots(domain: String, client: &Client) -> Result<Option<String>, reqwest::Error> {
+    pub async fn fetch_robots(
+        domain: String,
+        client: &Client,
+    ) -> Result<Option<String>, reqwest::Error> {
         let robots_url = format!("https://{}/robots.txt", domain);
         let response = client.get(robots_url).send().await?;
         let response_status = response.status();

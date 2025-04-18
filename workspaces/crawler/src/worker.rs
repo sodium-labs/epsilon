@@ -6,11 +6,7 @@ use dashmap::mapref::one::RefMut;
 use database::models::{NewFavicon, NewPage, NewQueuedPage};
 use database::schema::{favicons, pages, queue};
 use diesel::prelude::*;
-use std::{
-    collections::HashSet,
-    sync::Arc,
-    time::Instant,
-};
+use std::{collections::HashSet, sync::Arc, time::Instant};
 use url::Url;
 use utils::safe_slice;
 use utils::sql::get_sql_timestamp;
