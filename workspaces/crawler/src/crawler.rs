@@ -159,29 +159,20 @@ impl Crawler {
             }
         });
     }
+
     async fn dequeue(db_pool: &DbPool) -> Vec<QueuedPage> {
         // println!("Dequeue-ing from the DB");
 
         let elements: Vec<QueuedPage> = diesel::sql_query(
-            "
-WITH recent_domains AS (
-    SELECT domain
-    FROM queue
-    GROUP BY domain
-    ORDER BY MAX(timestamp) DESC
-    LIMIT 10
-),
-selected AS (
-    SELECT id, url, timestamp
-    FROM queue
-    WHERE domain IN (SELECT domain FROM recent_domains)
-    ORDER BY timestamp DESC
-    LIMIT 100
-)
-DELETE FROM queue
-WHERE id IN (SELECT id FROM selected)
-RETURNING id, domain, url, timestamp;
-        ",
+            "DELETE FROM queue q
+            USING (
+                SELECT DISTINCT ON (domain) id
+                FROM queue
+                ORDER BY domain, timestamp DESC
+                LIMIT 400
+            ) s
+            WHERE q.id = s.id
+            RETURNING q.id, q.domain, q.url, q.timestamp;",
         )
         .load::<QueuedPage>(&mut db_pool.get().unwrap())
         .unwrap();
