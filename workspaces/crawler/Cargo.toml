@@ -1,6 +1,6 @@
 [package]
 name = "crawler"
-version = "1.0.0"
+version = "1.1.0"
 description = "The crawler"
 authors = ["sodiumlabs"]
 edition = "2021"
