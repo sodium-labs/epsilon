@@ -2,6 +2,7 @@ use crate::crawler::Crawler;
 use crate::utils::{calculate_seo_score, get_content_type};
 use crate::website::Website;
 use crate::{crawler::Task, scraper::scrape_page};
+use dashmap::mapref::one::RefMut;
 use database::models::{NewFavicon, NewPage, NewQueuedPage};
 use database::schema::{favicons, pages, queue};
 use diesel::prelude::*;
@@ -9,9 +10,8 @@ use std::error::Error;
 use std::{
     collections::HashSet,
     sync::Arc,
-    time::{Duration, Instant},
+    time::Instant,
 };
-use tokio::time::sleep;
 use url::Url;
 use utils::safe_slice;
 use utils::sql::get_sql_timestamp;
@@ -50,9 +50,62 @@ impl Worker {
 
     async fn dequeue(&mut self) -> Option<Task> {
         let mut rx = self.manager.queue_channel.1.lock().await;
-        let v = rx.recv().await;
-        drop(rx);
-        v
+        rx.recv().await
+    }
+
+    fn get_website(&self, domain: String) -> RefMut<'_, String, Website> {
+        let website = self
+            .manager
+            .websites
+            .entry(domain.clone())
+            .or_insert(Website::new(domain));
+        website
+    }
+
+    async fn can_crawl(&self, task: Task) -> bool {
+        let should_fetch_robots = {
+            let website = self.get_website(task.domain.clone());
+            website.should_fetch_robots()
+        };
+        // The website lock is dropped before the potential await
+
+        let mut website;
+        if should_fetch_robots {
+            let robots = Website::fetch_robots(task.domain.clone(), &self.manager.web_client).await;
+
+            website = self.get_website(task.domain.clone());
+            if robots.is_ok() {
+                website.set_robots(robots.unwrap());
+            }
+        } else {
+            website = self.get_website(task.domain.clone());
+        }
+
+        if !website.is_crawlable(&self.manager.user_agent, &task.url) {
+            return false;
+        }
+
+        // Rate limits
+        if let Some(last_crawl) = &website.last_crawl {
+            let elapsed = last_crawl.elapsed().as_millis();
+
+            if elapsed < DOMAIN_CRAWL_COOLDOWN {
+                // println!("cooldown: {} / {}", task.url.clone(), website.domain);
+
+                // Drop the website as soon as possible to drop the lock
+                drop(website);
+
+                // let delay = DOMAIN_CRAWL_COOLDOWN - elapsed;
+
+                // This domain cannot be crawled for now, send it back in the queue
+                // TODO: currently this push the url to the back of the queue, fix that
+                self.save_to_queue(task.domain, task.url);
+                return false;
+            }
+        }
+
+        website.last_crawl = Some(Instant::now());
+        true
     }
 
     pub async fn crawl(&mut self) {
@@ -61,44 +114,8 @@ impl Worker {
                 continue;
             }
 
-            {
-                let mut website = self
-                    .manager
-                    .websites
-                    .entry(task.domain.clone())
-                    .or_insert(Website::new(task.domain.clone()));
-
-                if website.should_fetch_robots() {
-                    website.fetch_robots(&self.manager.web_client).await.ok();
-                }
-
-                if !website.is_crawlable(&self.manager.user_agent, &task.url) {
-                    continue;
-                }
-
-                // Rate limits
-                if let Some(last_crawl) = &website.last_crawl {
-                    let elapsed = last_crawl.elapsed().as_millis();
-
-                    if elapsed < DOMAIN_CRAWL_COOLDOWN {
-                        // TODO: it should not be necessary since it is drop just after? But without it, the crawl speed seems to slow down (deadlocks?)
-                        drop(website);
-
-                        let delay = DOMAIN_CRAWL_COOLDOWN - elapsed;
-                        let tx_clone = self.manager.queue_channel.0.clone();
-
-                        // This domain cannot be crawled for now, send it back in the queue
-                        tokio::spawn(async move {
-                            sleep(Duration::from_millis(delay as u64)).await;
-                            tx_clone.send(task).await.ok();
-                        });
-                        continue;
-                    }
-                }
-
-                website.last_crawl = Some(Instant::now());
-                // TODO: same as the last TODO
-                drop(website);
+            if !self.can_crawl(task.clone()).await {
+                continue;
             }
 
             self.manager.visited.insert(task.url.clone());

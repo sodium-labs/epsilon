@@ -33,27 +33,28 @@ impl Website {
         false
     }
 
-    pub async fn fetch_robots(&mut self, client: &Client) -> Result<(), reqwest::Error> {
-        // Set the last fetch to now even if the request fail
-        self.last_robots_fetch = Some(Instant::now());
-
-        let robots_url = format!("https://{}/robots.txt", self.domain);
+    pub async fn fetch_robots(domain: String, client: &Client) -> Result<Option<String>, reqwest::Error> {
+        let robots_url = format!("https://{}/robots.txt", domain);
         let response = client.get(robots_url).send().await?;
         let response_status = response.status();
 
         if !response_status.is_success() {
-            return Ok(());
+            return Ok(None);
         }
 
         let text = response.text().await?;
 
         // Cancel if it looks like a html file
         if text.starts_with("<") {
-            return Ok(());
+            return Ok(None);
         }
 
-        self.robots = Some(text);
-        Ok(())
+        Ok(Some(text))
+    }
+
+    pub fn set_robots(&mut self, text: Option<String>) {
+        self.last_robots_fetch = Some(Instant::now());
+        self.robots = text;
     }
 
     pub fn is_crawlable(&self, user_agent: &str, url: &str) -> bool {
