@@ -45,7 +45,8 @@ impl Crawler {
         let urls = Crawler::load_visited_urls(&db_pool);
         let client = Client::builder()
             .user_agent(&user_agent)
-            .timeout(Duration::from_secs(10))
+            .pool_idle_timeout(Some(Duration::from_secs(30)))
+            .pool_max_idle_per_host(0)
             .redirect(Policy::default())
             .build()
             .unwrap();
@@ -103,7 +104,7 @@ impl Crawler {
             let manager = arc.clone();
             async move {
                 let mut count = 0;
-                let delay = Duration::from_millis(1500);
+                let delay = Duration::from_millis(1000);
                 loop {
                     sleep(delay).await;
 
@@ -112,9 +113,11 @@ impl Crawler {
                     let per_sec = (new_count - count) as f32 / delay.as_secs_f32();
                     let old_count = count;
                     count = new_count;
-
+                    let per_min = per_sec * 60.0;
+                    let metrics = tokio::runtime::Handle::current().metrics();
+                    let tasks = metrics.num_alive_tasks();
                     if old_count != 0 {
-                        println!("\r- [Crawler] {per_sec:.2} pages/s --- ({count})");
+                        println!("\r- [Crawler] >>> {count}pages / {tasks}tasks >>> ({per_sec:.2}/s) ({per_min:.2}/min)");
                         // std::io::stdout().flush().unwrap();
                     }
                 }
