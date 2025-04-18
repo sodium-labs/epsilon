@@ -104,9 +104,20 @@ impl Worker {
             self.manager.visited.insert(task.url.clone());
 
             match self.crawl_page(&task).await {
-                Ok((page, favicon, mut links)) => {
-                    links.retain(|u| !self.manager.visited.contains(u));
-                    self.save_page(page, favicon, links);
+                Ok((page, favicon, links)) => {
+                    let mut new_links = HashSet::new();
+
+                    for l in links {
+                        if let Some((url, domain)) = normalize_url(&l) {
+                            let stringified_url = url.to_string();
+                            if self.manager.visited.contains(&stringified_url) {
+                                continue;
+                            }
+                            new_links.insert((domain, stringified_url));
+                        }
+                    }
+
+                    self.save_page(page, favicon, new_links);
                 }
                 Err(CrawlError::Reqwest(e)) => {
                     if e.is_timeout() {
@@ -252,10 +263,9 @@ impl Worker {
     }
 
     /// Save the collected page data
-    fn save_page(&self, mut page: NewPage, favicon: NewFavicon, links: HashSet<String>) {
+    fn save_page(&self, mut page: NewPage, favicon: NewFavicon, links: HashSet<(String, String)>) {
         let db_conn = &mut self.manager.db_pool.get().unwrap();
 
-        let domain = page.domain.clone();
         let favicon_url = favicon.url.clone();
 
         // Insert the new favicon
@@ -278,10 +288,10 @@ impl Worker {
 
         let elements = links
             .iter()
-            .filter(|x| x.len() <= 2048)
+            .filter(|x| x.1.len() <= 2048)
             .map(|x| NewQueuedPage {
-                url: x.clone(),
-                domain: domain.clone(),
+                url: x.1.clone(),
+                domain: x.0.clone(),
                 timestamp: get_sql_timestamp(),
             })
             .collect::<Vec<_>>();
