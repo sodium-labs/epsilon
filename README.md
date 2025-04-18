@@ -34,9 +34,10 @@ Epsilon is organized as a monorepo with the following workspaces:
 > [!WARNING]
 > Epsilon is currently in development.
 > All workspaces still require extensive testing. Known issues include:
+>
 > - `favicons`: Does not download all favicons consistently
 > - `indexer`: Already fast, but needs multi-threading for improved performance
-> - `crawler`: Multi-threading can lead to random deadlocks that either freeze tasks silently, crash the entire app, or produce a lot of errors. Restarting Epsilon usually resolves this, but it must be fixed to allow reliable background operation.
+> - `crawler`: Sometimes, memory usage increases dramatically until the maximum available memory is used. Crawling speed is not constant because of the domain cooldown (can go from 100page/s to 5page/s). Database deadlocks.
 
 # Usage
 
@@ -54,6 +55,7 @@ Available services: `api`, `crawler`, `favicons`, `indexer`, `monitor`
 ## Running tests:
 
 Run all tests with:
+
 ```sh
 cargo test
 ```
@@ -85,9 +87,12 @@ curl https://sh.rustup.rs -sSf | sh
 ```
 
 # TODO:
+
 - Log all requests to a file
 
 # Support
 
 If you like the project, please help us at https://patreon.com/sodiumlabs.
 You can also join our Discord at https://discord.gg/8PDXWSHH7k.
+
+See our other projects at https://sodiumlabs.xyz.
